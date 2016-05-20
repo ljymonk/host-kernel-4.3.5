@@ -482,7 +482,7 @@ static int vfio_basic_config_read(struct vfio_pci_device *vdev, int pos,
 		u16 cmd = le16_to_cpu(*(__le16 *)&vdev->vconfig[PCI_COMMAND]);
 		u32 tmp_val = le32_to_cpu(*val);
 
-		tmp_val |= cmd & PCI_COMMAND_MEMORY;
+		tmp_val |= cmd & (PCI_COMMAND_MEMORY | PCI_COMMAND_IO) ;
 		*val = cpu_to_le32(tmp_val);
 	}
 
