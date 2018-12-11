@@ -1,7 +1,7 @@
 /*******************************************************************************
  *
- * Intel Ethernet Controller XL710 Family Linux Driver
- * Copyright(c) 2013 - 2014 Intel Corporation.
+ * Intel(R) 40-10 Gigabit Ethernet Connection Network Driver
+ * Copyright(c) 2013 - 2018 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -11,9 +11,6 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * The full GNU General Public License is included in this distribution in
  * the file called "COPYING".
@@ -44,6 +41,15 @@
 #define I40E_IEEE_SUBTYPE_PFC_CFG	11
 #define I40E_IEEE_SUBTYPE_APP_PRI	12
 
+#define I40E_CEE_DCBX_OUI		0x001b21
+#define I40E_CEE_DCBX_TYPE		2
+
+#define I40E_CEE_SUBTYPE_CTRL		1
+#define I40E_CEE_SUBTYPE_PG_CFG		2
+#define I40E_CEE_SUBTYPE_PFC_CFG	3
+#define I40E_CEE_SUBTYPE_APP_PRI	4
+
+#define I40E_CEE_MAX_FEAT_TYPE		3
 /* Defines for LLDP TLV header */
 #define I40E_LLDP_TLV_LEN_SHIFT		0
 #define I40E_LLDP_TLV_LEN_MASK		(0x01FF << I40E_LLDP_TLV_LEN_SHIFT)
@@ -89,6 +95,20 @@
 #define I40E_IEEE_APP_PRIO_SHIFT	5
 #define I40E_IEEE_APP_PRIO_MASK		(0x7 << I40E_IEEE_APP_PRIO_SHIFT)
 
+/* TLV definitions for preparing MIB */
+#define I40E_TLV_ID_CHASSIS_ID		0
+#define I40E_TLV_ID_PORT_ID		1
+#define I40E_TLV_ID_TIME_TO_LIVE	2
+#define I40E_IEEE_TLV_ID_ETS_CFG	3
+#define I40E_IEEE_TLV_ID_ETS_REC	4
+#define I40E_IEEE_TLV_ID_PFC_CFG	5
+#define I40E_IEEE_TLV_ID_APP_PRI	6
+#define I40E_TLV_ID_END_OF_LLDPPDU	7
+#define I40E_TLV_ID_START		I40E_IEEE_TLV_ID_ETS_CFG
+
+#define I40E_IEEE_ETS_TLV_LENGTH	25
+#define I40E_IEEE_PFC_TLV_LENGTH	6
+#define I40E_IEEE_APP_TLV_LENGTH	11
 
 #pragma pack(1)
 
@@ -97,6 +117,36 @@ struct i40e_lldp_org_tlv {
 	__be16 typelength;
 	__be32 ouisubtype;
 	u8 tlvinfo[1];
+};
+
+struct i40e_cee_tlv_hdr {
+	__be16 typelen;
+	u8 operver;
+	u8 maxver;
+};
+
+struct i40e_cee_ctrl_tlv {
+	struct i40e_cee_tlv_hdr hdr;
+	__be32 seqno;
+	__be32 ackno;
+};
+
+struct i40e_cee_feat_tlv {
+	struct i40e_cee_tlv_hdr hdr;
+	u8 en_will_err; /* Bits: |En|Will|Err|Reserved(5)| */
+#define I40E_CEE_FEAT_TLV_ENABLE_MASK	0x80
+#define I40E_CEE_FEAT_TLV_WILLING_MASK	0x40
+#define I40E_CEE_FEAT_TLV_ERR_MASK	0x20
+	u8 subtype;
+	u8 tlvinfo[1];
+};
+
+struct i40e_cee_app_prio {
+	__be16 protocol;
+	u8 upper_oui_sel; /* Bits: |Upper OUI(6)|Selector(2)| */
+#define I40E_CEE_APP_SELECTOR_MASK	0x03
+	__be16 lower_oui;
+	u8 prio_map;
 };
 #pragma pack()
 
@@ -109,4 +159,5 @@ i40e_status i40e_aq_get_dcb_config(struct i40e_hw *hw, u8 mib_type,
 					     struct i40e_dcbx_config *dcbcfg);
 i40e_status i40e_get_dcb_config(struct i40e_hw *hw);
 i40e_status i40e_init_dcb(struct i40e_hw *hw);
+
 #endif /* _I40E_DCB_H_ */

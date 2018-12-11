@@ -1,7 +1,7 @@
 /*******************************************************************************
  *
- * Intel Ethernet Controller XL710 Family Linux Driver
- * Copyright(c) 2013 - 2014 Intel Corporation.
+ * Intel(R) 40-10 Gigabit Ethernet Connection Network Driver
+ * Copyright(c) 2013 - 2018 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -11,9 +11,6 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * The full GNU General Public License is included in this distribution in
  * the file called "COPYING".
@@ -101,7 +98,7 @@ i40e_status i40e_init_lan_hmc(struct i40e_hw *hw, u32 txq_num,
 					u32 fcoe_filt_num)
 {
 	struct i40e_hmc_obj_info *obj, *full_obj;
-	i40e_status ret_code = 0;
+	i40e_status ret_code = I40E_SUCCESS;
 	u64 l2fpm_size;
 	u32 size_exp;
 
@@ -255,9 +252,9 @@ static i40e_status i40e_remove_pd_page(struct i40e_hw *hw,
 						 struct i40e_hmc_info *hmc_info,
 						 u32 idx)
 {
-	i40e_status ret_code = 0;
+	i40e_status ret_code = I40E_SUCCESS;
 
-	if (!i40e_prep_remove_pd_page(hmc_info, idx))
+	if (i40e_prep_remove_pd_page(hmc_info, idx) == I40E_SUCCESS)
 		ret_code = i40e_remove_pd_page_new(hw, hmc_info, idx, true);
 
 	return ret_code;
@@ -282,9 +279,9 @@ static i40e_status i40e_remove_sd_bp(struct i40e_hw *hw,
 					       struct i40e_hmc_info *hmc_info,
 					       u32 idx)
 {
-	i40e_status ret_code = 0;
+	i40e_status ret_code = I40E_SUCCESS;
 
-	if (!i40e_prep_remove_sd_bp(hmc_info, idx))
+	if (i40e_prep_remove_sd_bp(hmc_info, idx) == I40E_SUCCESS)
 		ret_code = i40e_remove_sd_bp_new(hw, hmc_info, idx, true);
 
 	return ret_code;
@@ -301,7 +298,7 @@ static i40e_status i40e_remove_sd_bp(struct i40e_hw *hw,
 static i40e_status i40e_create_lan_hmc_object(struct i40e_hw *hw,
 				struct i40e_hmc_lan_create_obj_info *info)
 {
-	i40e_status ret_code = 0;
+	i40e_status ret_code = I40E_SUCCESS;
 	struct i40e_hmc_sd_entry *sd_entry;
 	u32 pd_idx1 = 0, pd_lmt1 = 0;
 	u32 pd_idx = 0, pd_lmt = 0;
@@ -371,7 +368,7 @@ static i40e_status i40e_create_lan_hmc_object(struct i40e_hw *hw,
 		ret_code = i40e_add_sd_table_entry(hw, info->hmc_info, j,
 						   info->entry_type,
 						   sd_size);
-		if (ret_code)
+		if (I40E_SUCCESS != ret_code)
 			goto exit_sd_error;
 		sd_entry = &info->hmc_info->sd_table.sd_entry[j];
 		if (I40E_SD_TYPE_PAGED == sd_entry->entry_type) {
@@ -388,7 +385,7 @@ static i40e_status i40e_create_lan_hmc_object(struct i40e_hw *hw,
 				ret_code = i40e_add_pd_table_entry(hw,
 								info->hmc_info,
 								i, NULL);
-				if (ret_code) {
+				if (I40E_SUCCESS != ret_code) {
 					pd_error = true;
 					break;
 				}
@@ -431,9 +428,8 @@ exit_sd_error:
 			pd_idx1 = max(pd_idx,
 				      ((j - 1) * I40E_HMC_MAX_BP_COUNT));
 			pd_lmt1 = min(pd_lmt, (j * I40E_HMC_MAX_BP_COUNT));
-			for (i = pd_idx1; i < pd_lmt1; i++) {
+			for (i = pd_idx1; i < pd_lmt1; i++)
 				i40e_remove_pd_bp(hw, info->hmc_info, i);
-			}
 			i40e_remove_pd_page(hw, info->hmc_info, (j - 1));
 			break;
 		case I40E_SD_TYPE_DIRECT:
@@ -462,9 +458,9 @@ i40e_status i40e_configure_lan_hmc(struct i40e_hw *hw,
 					     enum i40e_hmc_model model)
 {
 	struct i40e_hmc_lan_create_obj_info info;
-	i40e_status ret_code = 0;
 	u8 hmc_fn_id = hw->hmc.hmc_fn_id;
 	struct i40e_hmc_obj_info *obj;
+	i40e_status ret_code = I40E_SUCCESS;
 
 	/* Initialize part of the create object info struct */
 	info.hmc_info = &hw->hmc;
@@ -480,9 +476,9 @@ i40e_status i40e_configure_lan_hmc(struct i40e_hw *hw,
 		/* Make one big object, a single SD */
 		info.count = 1;
 		ret_code = i40e_create_lan_hmc_object(hw, &info);
-		if (ret_code && (model == I40E_HMC_MODEL_DIRECT_PREFERRED))
+		if ((ret_code != I40E_SUCCESS) && (model == I40E_HMC_MODEL_DIRECT_PREFERRED))
 			goto try_type_paged;
-		else if (ret_code)
+		else if (ret_code != I40E_SUCCESS)
 			goto configure_lan_hmc_out;
 		/* else clause falls through the break */
 		break;
@@ -492,7 +488,7 @@ try_type_paged:
 		/* Make one big object in the PD table */
 		info.count = 1;
 		ret_code = i40e_create_lan_hmc_object(hw, &info);
-		if (ret_code)
+		if (ret_code != I40E_SUCCESS)
 			goto configure_lan_hmc_out;
 		break;
 	default:
@@ -546,7 +542,7 @@ configure_lan_hmc_out:
 static i40e_status i40e_delete_lan_hmc_object(struct i40e_hw *hw,
 				struct i40e_hmc_lan_delete_obj_info *info)
 {
-	i40e_status ret_code = 0;
+	i40e_status ret_code = I40E_SUCCESS;
 	struct i40e_hmc_pd_table *pd_table;
 	u32 pd_idx, pd_lmt, rel_pd_idx;
 	u32 sd_idx, sd_lmt;
@@ -611,7 +607,7 @@ static i40e_status i40e_delete_lan_hmc_object(struct i40e_hw *hw,
 			&info->hmc_info->sd_table.sd_entry[sd_idx].u.pd_table;
 		if (pd_table->pd_entry[rel_pd_idx].valid) {
 			ret_code = i40e_remove_pd_bp(hw, info->hmc_info, j);
-			if (ret_code)
+			if (I40E_SUCCESS != ret_code)
 				goto exit;
 		}
 	}
@@ -632,12 +628,12 @@ static i40e_status i40e_delete_lan_hmc_object(struct i40e_hw *hw,
 		switch (info->hmc_info->sd_table.sd_entry[i].entry_type) {
 		case I40E_SD_TYPE_DIRECT:
 			ret_code = i40e_remove_sd_bp(hw, info->hmc_info, i);
-			if (ret_code)
+			if (I40E_SUCCESS != ret_code)
 				goto exit;
 			break;
 		case I40E_SD_TYPE_PAGED:
 			ret_code = i40e_remove_pd_page(hw, info->hmc_info, i);
-			if (ret_code)
+			if (I40E_SUCCESS != ret_code)
 				goto exit;
 			break;
 		default:
@@ -763,7 +759,7 @@ static void i40e_write_byte(u8 *hmc_bits,
 
 	/* prepare the bits and mask */
 	shift_width = ce_info->lsb % 8;
-	mask = BIT(ce_info->width) - 1;
+	mask = (u8)(BIT(ce_info->width) - 1);
 
 	src_byte = *from;
 	src_byte &= mask;
@@ -775,13 +771,13 @@ static void i40e_write_byte(u8 *hmc_bits,
 	/* get the current bits from the target bit string */
 	dest = hmc_bits + (ce_info->lsb / 8);
 
-	memcpy(&dest_byte, dest, sizeof(dest_byte));
+	i40e_memcpy(&dest_byte, dest, sizeof(dest_byte), I40E_DMA_TO_NONDMA);
 
 	dest_byte &= ~mask;	/* get the bits not changing */
 	dest_byte |= src_byte;	/* add in the new bits */
 
 	/* put it all back */
-	memcpy(dest, &dest_byte, sizeof(dest_byte));
+	i40e_memcpy(dest, &dest_byte, sizeof(dest_byte), I40E_NONDMA_TO_DMA);
 }
 
 /**
@@ -819,13 +815,13 @@ static void i40e_write_word(u8 *hmc_bits,
 	/* get the current bits from the target bit string */
 	dest = hmc_bits + (ce_info->lsb / 8);
 
-	memcpy(&dest_word, dest, sizeof(dest_word));
+	i40e_memcpy(&dest_word, dest, sizeof(dest_word), I40E_DMA_TO_NONDMA);
 
-	dest_word &= ~(cpu_to_le16(mask));	/* get the bits not changing */
-	dest_word |= cpu_to_le16(src_word);	/* add in the new bits */
+	dest_word &= ~(CPU_TO_LE16(mask));	/* get the bits not changing */
+	dest_word |= CPU_TO_LE16(src_word);	/* add in the new bits */
 
 	/* put it all back */
-	memcpy(dest, &dest_word, sizeof(dest_word));
+	i40e_memcpy(dest, &dest_word, sizeof(dest_word), I40E_NONDMA_TO_DMA);
 }
 
 /**
@@ -871,13 +867,13 @@ static void i40e_write_dword(u8 *hmc_bits,
 	/* get the current bits from the target bit string */
 	dest = hmc_bits + (ce_info->lsb / 8);
 
-	memcpy(&dest_dword, dest, sizeof(dest_dword));
+	i40e_memcpy(&dest_dword, dest, sizeof(dest_dword), I40E_DMA_TO_NONDMA);
 
-	dest_dword &= ~(cpu_to_le32(mask));	/* get the bits not changing */
-	dest_dword |= cpu_to_le32(src_dword);	/* add in the new bits */
+	dest_dword &= ~(CPU_TO_LE32(mask));	/* get the bits not changing */
+	dest_dword |= CPU_TO_LE32(src_dword);	/* add in the new bits */
 
 	/* put it all back */
-	memcpy(dest, &dest_dword, sizeof(dest_dword));
+	i40e_memcpy(dest, &dest_dword, sizeof(dest_dword), I40E_NONDMA_TO_DMA);
 }
 
 /**
@@ -923,13 +919,13 @@ static void i40e_write_qword(u8 *hmc_bits,
 	/* get the current bits from the target bit string */
 	dest = hmc_bits + (ce_info->lsb / 8);
 
-	memcpy(&dest_qword, dest, sizeof(dest_qword));
+	i40e_memcpy(&dest_qword, dest, sizeof(dest_qword), I40E_DMA_TO_NONDMA);
 
-	dest_qword &= ~(cpu_to_le64(mask));	/* get the bits not changing */
-	dest_qword |= cpu_to_le64(src_qword);	/* add in the new bits */
+	dest_qword &= ~(CPU_TO_LE64(mask));	/* get the bits not changing */
+	dest_qword |= CPU_TO_LE64(src_qword);	/* add in the new bits */
 
 	/* put it all back */
-	memcpy(dest, &dest_qword, sizeof(dest_qword));
+	i40e_memcpy(dest, &dest_qword, sizeof(dest_qword), I40E_NONDMA_TO_DMA);
 }
 
 /**
@@ -943,9 +939,10 @@ static i40e_status i40e_clear_hmc_context(struct i40e_hw *hw,
 					enum i40e_hmc_lan_rsrc_type hmc_type)
 {
 	/* clean the bit array */
-	memset(context_bytes, 0, (u32)hw->hmc.hmc_obj[hmc_type].size);
+	i40e_memset(context_bytes, 0, (u32)hw->hmc.hmc_obj[hmc_type].size,
+		    I40E_DMA_MEM);
 
-	return 0;
+	return I40E_SUCCESS;
 }
 
 /**
@@ -982,12 +979,12 @@ static i40e_status i40e_set_hmc_context(u8 *context_bytes,
 		}
 	}
 
-	return 0;
+	return I40E_SUCCESS;
 }
 
 /**
  * i40e_hmc_get_object_va - retrieves an object's virtual address
- * @hmc_info: pointer to i40e_hmc_info struct
+ * @hw: pointer to the hw structure
  * @object_base: pointer to u64 to get the va
  * @rsrc_type: the hmc resource type
  * @obj_idx: hmc object index
@@ -996,24 +993,20 @@ static i40e_status i40e_set_hmc_context(u8 *context_bytes,
  * base pointer.  This function is used for LAN Queue contexts.
  **/
 static
-i40e_status i40e_hmc_get_object_va(struct i40e_hmc_info *hmc_info,
+i40e_status i40e_hmc_get_object_va(struct i40e_hw *hw,
 					u8 **object_base,
 					enum i40e_hmc_lan_rsrc_type rsrc_type,
 					u32 obj_idx)
 {
 	u32 obj_offset_in_sd, obj_offset_in_pd;
-	i40e_status ret_code = 0;
+	struct i40e_hmc_info     *hmc_info = &hw->hmc;
 	struct i40e_hmc_sd_entry *sd_entry;
 	struct i40e_hmc_pd_entry *pd_entry;
 	u32 pd_idx, pd_lmt, rel_pd_idx;
+	i40e_status ret_code = I40E_SUCCESS;
 	u64 obj_offset_in_fpm;
 	u32 sd_idx, sd_lmt;
 
-	if (NULL == hmc_info) {
-		ret_code = I40E_ERR_BAD_PTR;
-		hw_dbg(hw, "i40e_hmc_get_object_va: bad hmc_info ptr\n");
-		goto exit;
-	}
 	if (NULL == hmc_info->hmc_obj) {
 		ret_code = I40E_ERR_BAD_PTR;
 		hw_dbg(hw, "i40e_hmc_get_object_va: bad hmc_info->hmc_obj ptr\n");
@@ -1071,8 +1064,7 @@ i40e_status i40e_clear_lan_tx_queue_context(struct i40e_hw *hw,
 	i40e_status err;
 	u8 *context_bytes;
 
-	err = i40e_hmc_get_object_va(&hw->hmc, &context_bytes,
-				     I40E_HMC_LAN_TX, queue);
+	err = i40e_hmc_get_object_va(hw, &context_bytes, I40E_HMC_LAN_TX, queue);
 	if (err < 0)
 		return err;
 
@@ -1092,8 +1084,7 @@ i40e_status i40e_set_lan_tx_queue_context(struct i40e_hw *hw,
 	i40e_status err;
 	u8 *context_bytes;
 
-	err = i40e_hmc_get_object_va(&hw->hmc, &context_bytes,
-				     I40E_HMC_LAN_TX, queue);
+	err = i40e_hmc_get_object_va(hw, &context_bytes, I40E_HMC_LAN_TX, queue);
 	if (err < 0)
 		return err;
 
@@ -1112,8 +1103,7 @@ i40e_status i40e_clear_lan_rx_queue_context(struct i40e_hw *hw,
 	i40e_status err;
 	u8 *context_bytes;
 
-	err = i40e_hmc_get_object_va(&hw->hmc, &context_bytes,
-				     I40E_HMC_LAN_RX, queue);
+	err = i40e_hmc_get_object_va(hw, &context_bytes, I40E_HMC_LAN_RX, queue);
 	if (err < 0)
 		return err;
 
@@ -1133,8 +1123,7 @@ i40e_status i40e_set_lan_rx_queue_context(struct i40e_hw *hw,
 	i40e_status err;
 	u8 *context_bytes;
 
-	err = i40e_hmc_get_object_va(&hw->hmc, &context_bytes,
-				     I40E_HMC_LAN_RX, queue);
+	err = i40e_hmc_get_object_va(hw, &context_bytes, I40E_HMC_LAN_RX, queue);
 	if (err < 0)
 		return err;
 

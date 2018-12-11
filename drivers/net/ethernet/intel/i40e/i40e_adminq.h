@@ -1,7 +1,7 @@
 /*******************************************************************************
  *
- * Intel Ethernet Controller XL710 Family Linux Driver
- * Copyright(c) 2013 - 2014 Intel Corporation.
+ * Intel(R) 40-10 Gigabit Ethernet Connection Network Driver
+ * Copyright(c) 2013 - 2018 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -11,9 +11,6 @@
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * The full GNU General Public License is included in this distribution in
  * the file called "COPYING".
@@ -69,6 +66,7 @@ struct i40e_asq_cmd_details {
 	u16 flags_dis;
 	bool async;
 	bool postpone;
+	struct i40e_aq_desc *wb_desc;
 };
 
 #define I40E_ADMINQ_DETAILS(R, i)   \
@@ -96,10 +94,9 @@ struct i40e_adminq_info {
 	u32 fw_build;                   /* firmware build number */
 	u16 api_maj_ver;                /* api major version */
 	u16 api_min_ver;                /* api minor version */
-	bool nvm_release_on_done;
 
-	struct mutex asq_mutex; /* Send queue lock */
-	struct mutex arq_mutex; /* Receive queue lock */
+	struct i40e_spinlock asq_spinlock; /* Send queue spinlock */
+	struct i40e_spinlock arq_spinlock; /* Receive queue spinlock */
 
 	/* last status values on send and receive queues */
 	enum i40e_admin_queue_err asq_last_status;
@@ -108,9 +105,10 @@ struct i40e_adminq_info {
 
 /**
  * i40e_aq_rc_to_posix - convert errors to user-land codes
- * aq_rc: AdminQ error code to convert
+ * aq_ret: AdminQ handler error code can override aq_rc
+ * aq_rc: AdminQ firmware error code to convert
  **/
-static inline int i40e_aq_rc_to_posix(u32 aq_ret, u16 aq_rc)
+static INLINE int i40e_aq_rc_to_posix(int aq_ret, int aq_rc)
 {
 	int aq_to_posix[] = {
 		0,           /* I40E_AQ_RC_OK */
@@ -142,14 +140,15 @@ static inline int i40e_aq_rc_to_posix(u32 aq_ret, u16 aq_rc)
 	if (aq_ret == I40E_ERR_ADMIN_QUEUE_TIMEOUT)
 		return -EAGAIN;
 
-	if (aq_rc >= ARRAY_SIZE(aq_to_posix))
+	if (!((u32)aq_rc < (sizeof(aq_to_posix) / sizeof((aq_to_posix)[0]))))
 		return -ERANGE;
+
 	return aq_to_posix[aq_rc];
 }
 
 /* general information */
 #define I40E_AQ_LARGE_BUF	512
-#define I40E_ASQ_CMD_TIMEOUT	250  /* msecs */
+#define I40E_ASQ_CMD_TIMEOUT	250000  /* usecs */
 
 void i40e_fill_default_direct_cmd_desc(struct i40e_aq_desc *desc,
 				       u16 opcode);

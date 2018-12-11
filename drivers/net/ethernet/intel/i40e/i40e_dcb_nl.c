@@ -1,7 +1,7 @@
 /*******************************************************************************
  *
- * Intel Ethernet Controller XL710 Family Linux Driver
- * Copyright(c) 2013 - 2014 Intel Corporation.
+ * Intel(R) 40-10 Gigabit Ethernet Connection Network Driver
+ * Copyright(c) 2013 - 2018 Intel Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
@@ -12,9 +12,6 @@
  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
  * more details.
  *
- * You should have received a copy of the GNU General Public License along
- * with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
  * The full GNU General Public License is included in this distribution in
  * the file called "COPYING".
  *
@@ -24,10 +21,11 @@
  *
  ******************************************************************************/
 
-#ifdef CONFIG_I40E_DCB
+#ifdef CONFIG_DCB
 #include "i40e.h"
 #include <net/dcbnl.h>
 
+#ifdef HAVE_DCBNL_IEEE
 /**
  * i40e_get_pfc_delay - retrieve PFC Link Delay
  * @hw: pointer to hardware struct
@@ -198,8 +196,10 @@ void i40e_dcbnl_set_all(struct i40e_vsi *vsi)
 		}
 	}
 
+#ifdef HAVE_DCBNL_IEEE_DELAPP
 	/* Notify user-space of the changes */
 	dcbnl_ieee_notify(dev, RTM_SETDCB, DCB_CMD_IEEE_SET, 0, 0);
+#endif
 }
 
 /**
@@ -236,14 +236,13 @@ static void i40e_dcbnl_del_app(struct i40e_pf *pf,
 			       struct i40e_dcb_app_priority_table *app)
 {
 	int v, err;
+
 	for (v = 0; v < pf->num_alloc_vsi; v++) {
 		if (pf->vsi[v] && pf->vsi[v]->netdev) {
 			err = i40e_dcbnl_vsi_del_app(pf->vsi[v], app);
-			if (err)
-				dev_info(&pf->pdev->dev, "%s: Failed deleting app for VSI seid=%d err=%d sel=%d proto=0x%x prio=%d\n",
-					 __func__, pf->vsi[v]->seid,
-					 err, app->selector,
-					 app->protocolid, app->priority);
+			dev_dbg(&pf->pdev->dev, "Deleting app for VSI seid=%d err=%d sel=%d proto=0x%x prio=%d\n",
+				pf->vsi[v]->seid, err, app->selector,
+				app->protocolid, app->priority);
 		}
 	}
 }
@@ -318,4 +317,5 @@ void i40e_dcbnl_setup(struct i40e_vsi *vsi)
 	/* Set initial IEEE DCB settings */
 	i40e_dcbnl_set_all(vsi);
 }
-#endif /* CONFIG_I40E_DCB */
+#endif /* HAVE_DCBNL_IEEE */
+#endif /* CONFIG_DCB */
